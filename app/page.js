@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2, Search, X } from 'lucide-react';
+import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2, Search, X, Shield } from 'lucide-react';
 import { CATEGORIES, CATEGORY_MAP } from '@/lib/categories';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ const DEFAULT_CENTER = [-0.1276, 51.5074]; // London
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [center, setCenter] = useState(DEFAULT_CENTER);
   const [hasGeo, setHasGeo] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -37,6 +38,12 @@ export default function HomePage() {
     const { data: sub } = supa.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Fetch admin status when user changes
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    fetch('/api/me').then((r) => r.json()).then((j) => setIsAdmin(j.profile?.role === 'admin')).catch(() => {});
+  }, [user]);
 
   // Geolocation
   useEffect(() => {
@@ -121,9 +128,18 @@ export default function HomePage() {
             <button onClick={() => setView('list')} className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 transition ${view === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><List className="h-4 w-4" />List</button>
           </div>
           {user ? (
-            <Button variant="outline" size="sm" onClick={async () => { const s = getSupabaseBrowser(); await s.auth.signOut(); toast('Signed out'); }}>
-              <UserIcon className="h-4 w-4 mr-1" />{(user.user_metadata?.full_name || user.email || 'You').split(' ')[0]}
-            </Button>
+            <>
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="gap-1 hidden sm:inline-flex">
+                    <Shield className="h-4 w-4" />Admin
+                  </Button>
+                </Link>
+              )}
+              <Button variant="outline" size="sm" onClick={async () => { const s = getSupabaseBrowser(); await s.auth.signOut(); toast('Signed out'); }}>
+                <UserIcon className="h-4 w-4 mr-1" />{(user.user_metadata?.full_name || user.email || 'You').split(' ')[0]}
+              </Button>
+            </>
           ) : (
             <Link href="/login"><Button size="sm" className="gap-1"><LogIn className="h-4 w-4" />Sign in</Button></Link>
           )}
