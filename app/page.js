@@ -4,12 +4,13 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2 } from 'lucide-react';
+import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2, Search, X } from 'lucide-react';
 import { CATEGORIES, CATEGORY_MAP } from '@/lib/categories';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Input } from '@/components/ui/input';
 
 const MapView = dynamic(() => import('@/components/map-view'), { ssr: false });
 const UploadSheet = dynamic(() => import('@/components/upload-sheet'), { ssr: false });
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Auth
   useEffect(() => {
@@ -80,7 +82,25 @@ export default function HomePage() {
     return () => { supa.removeChannel(ch); };
   }, []);
 
-  const filtered = useMemo(() => (categoryFilter ? jobs.filter(j => j.category === categoryFilter) : jobs), [jobs, categoryFilter]);
+  const filtered = useMemo(() => {
+    let list = categoryFilter ? jobs.filter((j) => j.category === categoryFilter) : jobs;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((j) => {
+        const cat = CATEGORY_MAP[j.category]?.label?.toLowerCase() || '';
+        return (
+          (j.title || '').toLowerCase().includes(q) ||
+          (j.business_name || '').toLowerCase().includes(q) ||
+          (j.description || '').toLowerCase().includes(q) ||
+          (j.postcode || '').toLowerCase().includes(q) ||
+          (j.town || '').toLowerCase().includes(q) ||
+          (j.category || '').toLowerCase().includes(q) ||
+          cat.includes(q)
+        );
+      });
+    }
+    return list;
+  }, [jobs, categoryFilter, searchQuery]);
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-background overflow-hidden">
@@ -109,6 +129,28 @@ export default function HomePage() {
           )}
         </div>
       </header>
+
+      {/* Search bar */}
+      <div className="px-3 pt-3 pb-2 bg-background/60 border-b border-border">
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by place, postcode, or category…"
+            className="pl-9 pr-9 h-11 rounded-full bg-card border-border focus-visible:ring-primary"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-muted grid place-items-center text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Category chips */}
       <div className="px-3 py-2 flex gap-2 overflow-x-auto scroll-hide border-b border-border bg-background/60">

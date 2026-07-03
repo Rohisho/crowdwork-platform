@@ -43,7 +43,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-orange-50 via-background to-orange-50 p-6">
+    <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-[#e6faf9] via-background to-[#e6faf9] p-6">
       <div className="w-full max-w-sm">
         <Link href="/" className="inline-flex items-center gap-2 mb-8">
           <div className="h-10 w-10 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
