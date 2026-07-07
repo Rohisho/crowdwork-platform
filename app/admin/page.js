@@ -71,6 +71,14 @@ export default function AdminPage() {
     toast.success(`Now ${nextRole}`); load();
   }
 
+  async function deleteUser(u) {
+    if (!confirm(`Remove ${u.email || u.display_name} and all their content permanently?`)) return;
+    const r = await fetch(`/api/admin/users/${u.id}`, { method: 'DELETE' });
+    const j = await r.json();
+    if (!r.ok) { toast.error(j.error); return; }
+    toast.success('User removed'); load();
+  }
+
   async function seed() {
     setBusy(true);
     try {
@@ -167,7 +175,7 @@ export default function AdminPage() {
             <JobsTable jobs={data.jobs} onApprove={(id) => updateJob(id, { status: 'active' })} onReject={(id) => updateJob(id, { status: 'rejected' })} onDelete={deleteJob} />
           </TabsContent>
           <TabsContent value="users">
-            <UsersTable users={data.users} me={me} onToggle={toggleUser} />
+            <UsersTable users={data.users} me={me} onToggle={toggleUser} onDelete={deleteUser} />
           </TabsContent>
           <TabsContent value="reports">
             <ReportsTable reports={data.reports} />
@@ -273,7 +281,7 @@ function StatusPill({ status }) {
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${m.bg}`}>{m.label}</span>;
 }
 
-function UsersTable({ users, me, onToggle }) {
+function UsersTable({ users, me, onToggle, onDelete }) {
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Users ({users.length})</CardTitle></CardHeader>
@@ -281,16 +289,28 @@ function UsersTable({ users, me, onToggle }) {
         <div className="grid divide-y">
           {users.map((u) => (
             <div key={u.id} className="p-3 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted grid place-items-center overflow-hidden">
+              <div className="h-10 w-10 rounded-full bg-muted grid place-items-center overflow-hidden shrink-0">
                 {u.avatar_url ? <img src={u.avatar_url} alt="" className="h-full w-full object-cover" /> : <Users className="h-4 w-4 opacity-50" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{u.display_name || u.id.slice(0, 8)}</div>
-                <div className="text-xs text-muted-foreground">Trust {u.trust_score} • {u.contribution_count} contributions • joined {new Date(u.created_at).toLocaleDateString()}</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium truncate">{u.display_name || u.id.slice(0, 8)}</span>
+                  {u.email && <span className="text-xs text-muted-foreground truncate">{u.email}</span>}
+                  {u.providers?.map((p) => (
+                    <Badge key={p} variant="outline" className="text-[10px] capitalize">{p}</Badge>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Trust {u.trust_score} • {u.contribution_count} contributions • joined {new Date(u.created_at).toLocaleDateString()}
+                  {u.last_sign_in_at && <> • last seen {new Date(u.last_sign_in_at).toLocaleDateString()}</>}
+                </div>
               </div>
               <Badge variant={u.role === 'admin' ? 'default' : 'outline'} className={u.role === 'admin' ? 'bg-primary' : ''}>{u.role}</Badge>
               <Button size="sm" variant="outline" disabled={u.id === me?.id} onClick={() => onToggle(u)}>
-                {u.role === 'admin' ? 'Demote' : 'Promote to admin'}
+                {u.role === 'admin' ? 'Demote' : 'Promote'}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-destructive" disabled={u.id === me?.id} onClick={() => onDelete(u)} title="Delete user">
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           ))}

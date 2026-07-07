@@ -35,12 +35,26 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(100);
 
-  // Users
-  const { data: usersList } = await admin
+  // Users — join profile rows with auth emails/providers
+  const { data: profileRows } = await admin
     .from('profiles')
     .select('id,display_name,avatar_url,role,trust_score,contribution_count,created_at')
     .order('created_at', { ascending: false })
     .limit(200);
+
+  const { data: authList } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const authById = Object.fromEntries((authList?.users || []).map((u) => [u.id, u]));
+  const usersList = (profileRows || []).map((p) => {
+    const au = authById[p.id];
+    const providers = au?.app_metadata?.providers || (au?.app_metadata?.provider ? [au.app_metadata.provider] : []);
+    return {
+      ...p,
+      email: au?.email || null,
+      providers,
+      last_sign_in_at: au?.last_sign_in_at || null,
+      banned: !!au?.banned_until,
+    };
+  });
 
   // Reports (with joined vacancy title)
   const { data: reportsList } = await admin
