@@ -75,18 +75,38 @@ export default function UploadSheet({ open, onClose, onCreated }) {
     } finally { setAnalyzing(false); }
   }
 
+  async function geocodePostcode(pc) {
+    try {
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(pc)}.json?country=gb&limit=1&access_token=${token}`;
+      const r = await fetch(url);
+      const j = await r.json();
+      const feature = j?.features?.[0];
+      if (feature?.center) return { lng: feature.center[0], lat: feature.center[1] };
+    } catch {}
+    return null;
+  }
+
   async function submit() {
     if (!file) { toast.error('Please select an image'); return; }
-    if (!pos) { toast.error('Waiting for GPS. Grant location or enter postcode.'); return; }
+
+    let effectivePos = pos;
+    if (!effectivePos && postcode.trim()) {
+      toast('Looking up postcode…');
+      effectivePos = await geocodePostcode(postcode.trim());
+      if (!effectivePos) { toast.error("Couldn't find that postcode. Try full UK postcode e.g. E1 6AN"); return; }
+      setPos(effectivePos);
+    }
+    if (!effectivePos) { toast.error('Grant location OR enter a UK postcode.'); return; }
+
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append('image', file);
-      fd.append('lat', String(pos.lat));
-      fd.append('lng', String(pos.lng));
+      fd.append('lat', String(effectivePos.lat));
+      fd.append('lng', String(effectivePos.lng));
       if (postcode) fd.append('postcode', postcode);
       if (town) fd.append('town', town);
-      // send overrides only if user edited any field
       const overrides = {};
       Object.entries(form).forEach(([k, v]) => { if (v && v.trim()) overrides[k] = v.trim(); });
       if (Object.keys(overrides).length) fd.append('overrides', JSON.stringify(overrides));
@@ -149,7 +169,7 @@ export default function UploadSheet({ open, onClose, onCreated }) {
                 <div className="flex items-center justify-between">
                   <div className="text-sm flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    {pos ? `Location captured (${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)})` : 'Waiting for GPS…'}
+                    {pos ? `Location captured (${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)})` : (postcode.trim() ? 'Will use your postcode' : 'Waiting for GPS or enter postcode…')}
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => {
                     navigator.geolocation.getCurrentPosition((p) => setPos({ lat: p.coords.latitude, lng: p.coords.longitude }), () => toast.error('Location denied'), { enableHighAccuracy: true });
@@ -215,7 +235,7 @@ export default function UploadSheet({ open, onClose, onCreated }) {
         </div>
 
         <div className="p-4 border-t bg-background">
-          <Button className="w-full h-12 text-base" disabled={!file || uploading || !pos} onClick={submit}>
+          <Button className="w-full h-12 text-base" disabled={!file || uploading || (!pos && !postcode.trim())} onClick={submit}>
             {uploading ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analysing & publishing…</>) : (<>📍 Publish this spotted job</>)}
           </Button>
         </div>

@@ -18,7 +18,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📍%3C/text%3E%3C/svg%3E" />
       </head>
@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
         <Providers>
           <PostHogProvider>{children}</PostHogProvider>
         </Providers>
-        <Toaster position="top-center" richColors />
+        <Toaster position="bottom-center" richColors offset={16} />
       </body>
     </html>
   );

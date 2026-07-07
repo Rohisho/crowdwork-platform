@@ -19,8 +19,8 @@ export default function MapView({ center, jobs, onSelect }) {
       zoom: 12,
       attributionControl: false,
     });
-    mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-    mapRef.current.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true }), 'top-right');
+    mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+    mapRef.current.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true }), 'top-left');
     return () => { mapRef.current?.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

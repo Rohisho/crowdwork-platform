@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,12 @@ import { MapPin, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   async function sendMagicLink(e) {
     e.preventDefault();
@@ -44,6 +47,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-[#e6faf9] via-background to-[#e6faf9] p-6">
+      {mounted ? (
       <div className="w-full max-w-sm">
         <Link href="/" className="inline-flex items-center gap-2 mb-8">
           <div className="h-10 w-10 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm">
@@ -95,6 +99,9 @@ export default function LoginPage() {
 
         <Link href="/" className="mt-4 block text-center text-sm text-muted-foreground hover:text-foreground">← Back to map</Link>
       </div>
+      ) : (
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      )}
     </div>
   );
 }

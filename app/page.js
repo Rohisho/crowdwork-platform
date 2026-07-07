@@ -19,6 +19,7 @@ const JobDetailSheet = dynamic(() => import('@/components/job-detail-sheet'), { 
 const DEFAULT_CENTER = [-0.1276, 51.5074]; // London
 
 export default function HomePage() {
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [center, setCenter] = useState(DEFAULT_CENTER);
@@ -31,10 +32,31 @@ export default function HomePage() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Auth
+  useEffect(() => { setMounted(true); }, []);
+
+  // Auth + OAuth code exchange fallback
+  // If Google/Supabase redirects back to "/" with ?code=... (misconfigured Site URL),
+  // we still handle it here so the session gets created and the profile is generated.
   useEffect(() => {
     const supa = getSupabaseBrowser();
-    supa.auth.getUser().then(({ data }) => setUser(data.user ?? null));
+    (async () => {
+      try {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get('code');
+        if (code) {
+          const { error } = await supa.auth.exchangeCodeForSession(code);
+          if (!error) {
+            toast.success('Signed in!');
+          }
+          // Clean the URL so the code isn't left in history / re-triggered on refresh
+          url.searchParams.delete('code');
+          url.searchParams.delete('state');
+          window.history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
+        }
+      } catch {}
+      const { data } = await supa.auth.getUser();
+      setUser(data.user ?? null);
+    })();
     const { data: sub } = supa.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -61,7 +83,7 @@ export default function HomePage() {
       const params = new URLSearchParams();
       params.set('lat', String(center[1]));
       params.set('lng', String(center[0]));
-      params.set('radius_m', '50000');
+      params.set('radius_m', '500000'); // 500km — covers all of UK from any point
       if (categoryFilter) params.set('category', categoryFilter);
       const res = await fetch('/api/jobs?' + params.toString());
       const data = await res.json();
@@ -108,6 +130,17 @@ export default function HomePage() {
     }
     return list;
   }, [jobs, categoryFilter, searchQuery]);
+
+  if (!mounted) {
+    return (
+      <div className="h-[100dvh] grid place-items-center bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm">Loading Spotted Jobs…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] w-full flex flex-col bg-background overflow-hidden">
