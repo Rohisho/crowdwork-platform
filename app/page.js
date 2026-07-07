@@ -4,13 +4,14 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2, Search, X, Shield } from 'lucide-react';
+import { Camera, MapPin, List, Map as MapIcon, LogIn, User as UserIcon, Bookmark, Loader2, Search, X, Shield, Flag, LogOut, ChevronDown } from 'lucide-react';
 import { CATEGORIES, CATEGORY_MAP } from '@/lib/categories';
 import { getSupabaseBrowser } from '@/lib/supabase/browser';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const MapView = dynamic(() => import('@/components/map-view'), { ssr: false });
 const UploadSheet = dynamic(() => import('@/components/upload-sheet'), { ssr: false });
@@ -161,18 +162,50 @@ export default function HomePage() {
             <button onClick={() => setView('list')} className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 transition ${view === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}><List className="h-4 w-4" />List</button>
           </div>
           {user ? (
-            <>
-              {isAdmin && (
-                <Link href="/admin">
-                  <Button variant="outline" size="sm" className="gap-1 hidden sm:inline-flex">
-                    <Shield className="h-4 w-4" />Admin
-                  </Button>
-                </Link>
-              )}
-              <Button variant="outline" size="sm" onClick={async () => { const s = getSupabaseBrowser(); await s.auth.signOut(); toast('Signed out'); }}>
-                <UserIcon className="h-4 w-4 mr-1" />{(user.user_metadata?.full_name || user.email || 'You').split(' ')[0]}
-              </Button>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <UserIcon className="h-4 w-4" />
+                  <span className="hidden xs:inline">{(user.user_metadata?.full_name || user.email || 'You').split(' ')[0]}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+                  <span className="text-[11px] font-normal text-muted-foreground truncate">{user.email}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/me" className="gap-2 cursor-pointer"><UserIcon className="h-4 w-4" />Profile details</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/me/saved" className="gap-2 cursor-pointer"><Bookmark className="h-4 w-4" />Saved jobs</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/me/reported" className="gap-2 cursor-pointer"><Flag className="h-4 w-4" />Reported jobs</Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="gap-2 cursor-pointer"><Shield className="h-4 w-4" />Admin dashboard</Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive gap-2 cursor-pointer"
+                  onClick={async () => {
+                    const s = getSupabaseBrowser();
+                    await s.auth.signOut();
+                    toast('Signed out');
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link href="/login"><Button size="sm" className="gap-1"><LogIn className="h-4 w-4" />Sign in</Button></Link>
           )}

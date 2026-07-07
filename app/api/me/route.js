@@ -12,8 +12,6 @@ export async function GET() {
   const admin = getSupabaseAdmin();
   let { data: profile } = await admin.from('profiles').select('*').eq('id', user.id).maybeSingle();
 
-  // Defensive auto-create: if the trigger somehow missed this user (e.g. legacy row),
-  // insert a profile row now so contribution/vote/bookmark flows have a target.
   if (!profile) {
     const insertRow = {
       id: user.id,
@@ -33,4 +31,21 @@ export async function GET() {
   }
 
   return NextResponse.json({ user, profile });
+}
+
+export async function PATCH(request) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json();
+  const patch = {};
+  if (typeof body.display_name === 'string') patch.display_name = body.display_name.slice(0, 60);
+  if (typeof body.avatar_url === 'string' || body.avatar_url === null) patch.avatar_url = body.avatar_url;
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from('profiles').update(patch).eq('id', user.id).select('*').single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, profile: data });
 }
